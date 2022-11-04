@@ -1,0 +1,6 @@
+server:
+  port: 9008
+
+application:
+  name: Service payment management service
+  description: API created to manage service payments
