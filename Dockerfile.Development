@@ -1,0 +1,11 @@
+# Maven
+FROM maven:3.8.6-openjdk-18 AS build
+COPY src /home/app/src
+COPY pom.xml /home/app
+RUN mvn -f /home/app/pom.xml clean package
+
+# Java 17
+FROM openjdk:17
+COPY --from=build home/app/target/account-mgmt-0.0.1-SNAPSHOT.jar /home/app/app.jar
+EXPOSE 9002
+ENTRYPOINT ["java","-jar","/home/app/app.jar"]
