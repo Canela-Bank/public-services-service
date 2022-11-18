@@ -6,9 +6,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -22,8 +26,53 @@ public class ServicePaymentSavingsController {
     @CrossOrigin("*")
     public ResponseEntity<String> servicePaymentSavings (@RequestBody ServiceRequest request){
 
-        //TODO: Connection with service provider
+    	String BillId = request.accountId;
+    	int salesService = 0;
+   	
+    	//Provider connection
+    	try {
+    		URL getPriceUrl = new URL("http://localhost:8080/"+ request.serviceType +"/pay");
+        	HttpURLConnection httpCon = (HttpURLConnection) getPriceUrl.openConnection();
+        	httpCon.setDoOutput(true);
+        	httpCon.setRequestMethod("POST");
+        	httpCon.setRequestProperty("Content-Type", "application/json");
+        	httpCon.setRequestProperty("Accept", "application/json");
+        	httpCon.setDoOutput(true);
 
+       //Build RequestBody
+        	
+        	 JSONObject dataReturn = new JSONObject(){{
+                 put("BillId",BillId);
+        	 }};
+        	 
+        	
+        	
+        	try(OutputStream os = httpCon.getOutputStream()) {
+        	    byte[] input = dataReturn.toString().getBytes("utf-8");
+        	    os.write(input, 0, input.length);			
+        	}
+        	httpCon.connect();
+        	
+        //If the connection is successful
+            if(httpCon.getResponseCode() == HttpURLConnection.HTTP_ACCEPTED){
+            
+            //Read provider response
+            	try(BufferedReader br = new BufferedReader(
+          			  new InputStreamReader(httpCon.getInputStream(), "utf-8"))) {
+          			    StringBuilder response = new StringBuilder();
+          			    String responseLine = null;
+          			    while ((responseLine = br.readLine()) != null) {
+          			       response.append(responseLine.trim());
+          			    }
+          			    salesService =  Integer.parseInt(response.toString());  
+          			} 	
+            }
+	
+		} catch (Exception e) {
+			 throw new RuntimeException(e);
+		}
+    	
+    	
         //GraphQL connection
         URL getAccountUrl = null;
         try {
@@ -49,7 +98,6 @@ public class ServicePaymentSavingsController {
                 String accountInfo = jsonGetAccount.get("getAccountById").toString();
                 JSONObject jsonAccount = new JSONObject(accountInfo);
 
-                int salesService = 100000;
                 if(salesService > Integer.parseInt(jsonAccount.get("balance").toString())){
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Pago rechazado");
                 } else {
@@ -62,14 +110,16 @@ public class ServicePaymentSavingsController {
                     if(connUpdate.getResponseCode() == HttpURLConnection.HTTP_OK){
                         return ResponseEntity.status(HttpStatus.ACCEPTED).body("Pago realizado");
                     } else {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No se pudo realizar el pago");
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("No se pudo realizar el pago. Intenta de nuevo");
                     }
                 }
             }
         } catch (IOException | JSONException e) {
             throw new RuntimeException(e);
         }
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body("Monto actualizado");
+ 
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Lo sentimos, el pago no pudo ser realizado");
+        
     }
 
     static class ServiceRequest {
