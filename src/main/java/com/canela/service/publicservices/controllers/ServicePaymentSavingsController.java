@@ -75,7 +75,7 @@ public class ServicePaymentSavingsController {
         //GraphQL connection
         URL getAccountUrl = null;
         try {
-            getAccountUrl = new URL("http://10.1.0.0:3001/graphql?query=%7B%0A%20%20getAccountById%20(id%3A%22"+ request.getSavingsId() +"%22)%7B%0A%20%20%20%20id%0A%20%20%20%20balance%0A%20%20%20%20user_id%0A%20%20%7D%0A%7D%0A");
+            getAccountUrl = new URL("http://localhost:3002/graphql?query=query%7B%0A%20%20getAccountById(id%3A%22"+request.getAccountId()+"%22)%7B%0A%20%20%20%20id%0A%20%20%20%20balance%0A%20%20%20%20user_id%2C%0A%20%20%20%20user_document_type%0A%20%20%7D%0A%7D%0A");
             HttpURLConnection connAccount = (HttpURLConnection) getAccountUrl.openConnection();
             connAccount.setRequestMethod("GET");
 
@@ -101,8 +101,10 @@ public class ServicePaymentSavingsController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Pago rechazado");
                 } else {
                     long newBalance = (Long.parseLong(jsonAccount.get("balance").toString()) - salesService);
+                    String user_id = (String) jsonAccount.get("user_id");
+                    String user_id_type = jsonAccount.get("user_document_type").toString();
                     //Update balance of the account
-                    URL updateAccount = new URL("http://10.1.0.0:3001/graphql?query=mutation%7B%0A%20%20createAccount%20(id%3A%22" + request.getSavingsId() + "%22%2C%20balance%3A%20" + newBalance + "%2C%20user_id%3A%20%22" + jsonAccount.get("user_id") + "%22)%7B%0A%20%20%20%20id%0A%20%20%20%20balance%0A%20%20%20%20user_id%0A%20%20%7D%0A%7D%0A");
+                    URL updateAccount = new URL("http://localhost:3002/graphql?query=mutation%7B%0A%20%20createAccount%20(id%3A%22"+request.getAccountId()+"%22%2C%20balance%3A%20"+newBalance+"%2C%20user_id%3A%20%22"+user_id+"%22%2C%20user_document_type%3A%20"+user_id_type+")%7B%0A%20%20%20%20id%0A%20%20%20%20balance%0A%20%20%20%20user_id%2C%0A%20%20%20%20user_document_type%0A%20%20%7D%0A%7D%0A");
                     HttpURLConnection connUpdate = (HttpURLConnection) updateAccount.openConnection();
                     connUpdate.setRequestMethod("POST");
 
